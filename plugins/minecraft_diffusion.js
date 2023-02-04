@@ -18,9 +18,9 @@
                 click: function() {
 
                     // My undo isn't working right yet
-                    Undo.initEdit({elements: Texture.selected});
+                    //Undo.initEdit({elements: Texture.selected});
 
-                    const prompt = '';
+                    let prompt = '';
 
                     //Texture.all[0].remove(true);
                     //new Texture({name: 'steve-NEW'}).fromPath('D:\\Projects\\MinecraftDiffusion\\Skins\\steve-NEW.png').add(false);
@@ -43,7 +43,7 @@
                               <div>
                                 <p>Prompt:</p>
                                 <div>
-                                  <input class="input-box" type="text" min="1" max="256" @input="changePrompt('newPrompt')"></input>
+                                  <input class="input-box" type="text" min="1" max="256" @input="changePrompt()"></input>
                                 </div>
                                 <br>
                                 <div style="display:flex;gap:8px">
@@ -53,12 +53,11 @@
                               </div>
                             `,
                             methods: {
-                              changePrompt(newPrompt) {
-                                prompt = newPrompt
+                              changePrompt() {
+                                prompt = document.querySelector('.input-box').value;
                               },
                               dream() {
-                                // TODO: This is where we would insert the CIL call to webui but for now it's just fake
-                                new Texture({name: 'steve-NEW'}).fromPath('D:\\Projects\\MinecraftDiffusion\\Skins\\steve-NEW.png').add(false);
+                                callTextToImage(prompt);
                                 this.close()
                               },
                               close: () => dialog.cancel()
@@ -68,7 +67,7 @@
                         })
                     dialog.show()
                     
-                    Undo.finishEdit('Dream new texture');
+                    //Undo.finishEdit('Dream new texture');
                 }
             });
 
@@ -79,3 +78,36 @@
         }
     });
 })();
+
+async function callTextToImage(prompt) {
+  console.log("Dreaming of a new texture: " + prompt);
+  const payload = {
+    "prompt": prompt,
+    "steps": 20,
+  };
+  const response = await fetch('http://127.0.0.1:7860/sdapi/v1/txt2img', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json();
+
+  console.log(data);
+
+  data['images'].forEach(function (i) {
+    const imageData = i.split(',', 1)[0];
+    new Texture().fromDataURL('data:image/png;base64,' + imageData).add();
+  });
+}
+
+function resizeImage(imageData) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const context = canvas.getContext('2d');
+  context.drawImage(image, 0, 0, 64, 64);
+  const resizedImage = canvas.toDataURL();
+  return resizedImage;
+}
